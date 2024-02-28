@@ -33,3 +33,7 @@ colcon build && source install/setup.bash
 - Tracker:
 
 `ros2 launch tracker_ros tracker_ros.launch.py`
+
+- Crowd detector:
+
+`ros2 launch crowd_management_ros crowd_management.launch.py`
