@@ -10,7 +10,6 @@ def generate_launch_description():
     ld = LaunchDescription()
     
     ckpt_path = os.path.join(get_package_share_directory('detectors_ros'), 'checkpoints', 'ckpt_jrdb_ann_dr_spaam_e20.pth')
-    print(ckpt_path)
     
     config = os.path.join(
         get_package_share_directory('detectors_ros'),
@@ -30,7 +29,7 @@ def generate_launch_description():
     node=Node(
         package = 'detectors_ros',
         executable = 'dr_spaam_ros',
-        parameters = [param_substitutions]
+        parameters = [configured_params]
     )
     ld.add_action(node)
     return ld
