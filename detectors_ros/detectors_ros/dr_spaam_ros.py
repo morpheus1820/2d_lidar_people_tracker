@@ -1,16 +1,26 @@
-import cv2
 import numpy as np
 import rclpy
 import sys
 
-from rclpy.node import Node
+import typing
+
+# Lifecycle nodes provide the same interface as normal nodes in ros2
+# For more infos check https://github.com/ros2/demos/tree/rolling/lifecycle_py
+# from rclpy.node import Node
+from rclpy.lifecycle import Node
+from rclpy.lifecycle import Publisher
+from rclpy.lifecycle import State
+from rclpy.lifecycle import TransitionCallbackReturn
+
 from rclpy.parameter import Parameter
+
 from sensor_msgs.msg import LaserScan, Image
 from geometry_msgs.msg import Point, Pose, PoseArray
 from visualization_msgs.msg import Marker
 
 from dr_spaam.detector import Detector
 from dr_spaam.utils import utils as u
+import cv2
 from cv_bridge import CvBridge
 
 
@@ -27,18 +37,18 @@ class DrSpaamROS(Node):
             stride=self.stride,
             panoramic_scan=self.panoramic_scan,
         )
-        self._init()
+        # self._init() # is now called in onConfigure
 
     def _read_params(self):
         """
         @brief      Reads parameters from ROS server.
         """
-        self.declare_parameter("weight_file", "/code/humble/self_supervised_person_detection/checkpoints/ckpt_jrdb_ann_drow3_e40.pth")
-        self.declare_parameter("conf_thresh", 0.86)
+        self.declare_parameter("weight_file", "/home/user1/CONVINCE/ros2_person_det_ws/weights/ckpt_jrdb_ann_dr_spaam_e20.pth")
+        self.declare_parameter("conf_thresh", 0.8)
         self.declare_parameter("stride", 2)
-        self.declare_parameter("detector_model", "DROW3")
+        self.declare_parameter("detector_model", "DR-SPAAM")
         self.declare_parameter("panoramic_scan", True)	
-        self.declare_parameter("use_gpu", True)	
+        self.declare_parameter("use_gpu", False)	
 		
         self.weight_file = str(self.get_parameter("weight_file").value)
         self.conf_thresh = float(self.get_parameter("conf_thresh").value)
@@ -51,7 +61,7 @@ class DrSpaamROS(Node):
         """
         @brief      Convenience function to read subscriber parameter.
         """
-        self.declare_parameter("subscriber/" + name + "/topic", "laser_local")
+        self.declare_parameter("subscriber/" + name + "/topic", "laser")
         self.declare_parameter("subscriber/" + name + "/queue_size", 10)
 	
         topic = str(self.get_parameter("subscriber/" + name + "/topic").value)
@@ -72,25 +82,26 @@ class DrSpaamROS(Node):
         return topic, queue_size, latch
     
     def _init(self):
-	
+        """
+        @brief      Initialize ROS connection.
+        """
         # Publisher
         topic, queue_size, latch = self.read_publisher_param("detections")
-        self._dets_pub = self.create_publisher(
+        self._dets_pub = self.create_lifecycle_publisher(
             PoseArray, topic, queue_size #, latch=latch
         )
 
         topic, queue_size, latch = self.read_publisher_param("rviz")
-        self._rviz_pub = self.create_publisher(
+        self._rviz_pub = self.create_lifecycle_publisher(
             Marker, topic, queue_size #, latch=latch
         )
 
-        self._img_pub = self.create_publisher(
-            Image, "image", 1
-	)
-
-	
         # Subscriber
         topic, queue_size = self.read_subscriber_param("scan")
+
+        # There does not exists for the time being a lifecycle_subscriber
+        # https://github.com/ros2/demos/issues/488
+        # So we will keep on reading even if the process is stopped
         self._scan_sub = self.create_subscription(
             LaserScan, topic, self._scan_callback, queue_size
         )
@@ -98,7 +109,67 @@ class DrSpaamROS(Node):
         self.br = CvBridge()
         #self.video_out = cv2.VideoWriter('/tmp/output.avi', cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 20.0, (512,512))
 
+    def on_configure(self, state: State) -> TransitionCallbackReturn:
+        self._init()
+        self.get_logger().info('on_configure() is called.')
+        return TransitionCallbackReturn.SUCCESS
+
+    def on_activate(self, state: State) -> TransitionCallbackReturn:
+        # The different behaviour of publishers will be
+        # defined in _scan_callback
+        return super().on_activate(state)
+
+    def on_deactivate(self, state: State) -> TransitionCallbackReturn:
+        return super().on_deactivate(state)
+
+    def on_cleanup(self, state: State) -> TransitionCallbackReturn:
+        """
+        Cleanup the node, after a cleaning-up transition is requested.
+
+        on_cleanup callback is being called when the lifecycle node
+        enters the "cleaning up" state.
+
+        :return: The state machine either invokes a transition to the "unconfigured" state or stays
+            in "inactive" depending on the return value.
+            TransitionCallbackReturn.SUCCESS transitions to "unconfigured".
+            TransitionCallbackReturn.FAILURE transitions to "inactive".
+            TransitionCallbackReturn.ERROR or any uncaught exceptions to "errorprocessing"
+        """
+        self.destroy_publisher(self._dets_pub)
+        self.destroy_publisher(self._rviz_pub)
+        self.destroy_subscription(self._scan_sub)
+
+        self.get_logger().info('on_cleanup() is called.')
+        return TransitionCallbackReturn.SUCCESS
+
+    def on_shutdown(self, state: State) -> TransitionCallbackReturn:
+        """
+        Shutdown the node, after a shutting-down transition is requested.
+
+        on_shutdown callback is being called when the lifecycle node
+        enters the "shutting down" state.
+
+        :return: The state machine either invokes a transition to the "finalized" state or stays
+            in the current state depending on the return value.
+            TransitionCallbackReturn.SUCCESS transitions to "unconfigured".
+            TransitionCallbackReturn.FAILURE transitions to "inactive".
+            TransitionCallbackReturn.ERROR or any uncaught exceptions to "errorprocessing"
+        """
+        self.destroy_publisher(self._dets_pub)
+        self.destroy_publisher(self._rviz_pub)
+        self.destroy_subscription(self._scan_sub)
+
+        self.get_logger().info('on_shutdown() is called.')
+        return TransitionCallbackReturn.SUCCESS
+
     def _scan_callback(self, msg):
+        
+        if (self._dets_pub is None or not self._dets_pub.is_activated
+            or self._rviz_pub is None or not self._rviz_pub.is_activated
+        ):
+            self.get_logger().info('Lifecycle publisher is deactivated. Messages are not published.')
+            return
+        
         if (
             self._dets_pub.get_subscription_count() == 0
             and self._rviz_pub.get_subscription_count() == 0
@@ -143,7 +214,7 @@ def detections_to_rviz_marker(dets_xy, dets_cls, color = (1.0, 0.0, 0.0, 1.0)):
     msg = Marker()
     msg.action = Marker.ADD
     msg.ns = "dr_spaam_ros"
-    msg.id = 1
+    msg.id = 0
     msg.type = Marker.LINE_LIST
     #msg.header.frame_id = "mobile_base_double_lidar"
     # set quaternion so that RViz does not give warning
@@ -190,7 +261,7 @@ def detections_to_pose_array(dets_xy, dets_cls):
         d_xy = -d_xy
         # Detector uses following frame convention:
         # x forward, y rightward, z downward, phi is angle w.r.t. x-axis
-        p = Pose()         
+        p = Pose()
         p.position.x = float(d_xy[0])
         p.position.y = float(d_xy[1])
         p.position.z = 0.0
@@ -201,10 +272,13 @@ def detections_to_pose_array(dets_xy, dets_cls):
 
 def main(args=None):
     rclpy.init(args=args)
+    executor = rclpy.executors.SingleThreadedExecutor()
     node = DrSpaamROS()
-    rclpy.spin(node)
-    #node.video_out.release()
-    rclpy.shutdown()
+    executor.add_node(node)
+    try:
+        executor.spin()
+    except (KeyboardInterrupt, rclpy.executors.ExternalShutdownException):
+        node.destroy_node()
 
 if __name__ == '__main__':
     try:
