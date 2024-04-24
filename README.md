@@ -5,8 +5,8 @@
 ```
 mkdir -p $HOME/ros2_ws/src && cd $HOME/ros2_ws/src
 git clone https://github.com/morpheus1820/2d_lidar_people_tracker
-# install torch, e.g., pip3 install torch torchvision
-pip install -r 2d_lidar_people_tracker/requirements.txt
+pip3 install torch torchvision
+pip3 install -r 2d_lidar_people_tracker/requirements.txt
 cd $HOME/ros2_ws` 
 colcon build && source install/setup.bash
 ```
@@ -37,3 +37,6 @@ colcon build && source install/setup.bash
 
 `ros2 launch crowd_management_ros crowd_management.launch.py` (group detection + turning around)
 
+- Visualization:
+
+`rviz2 -d detector_ros/config/r1-viz.rviz`
