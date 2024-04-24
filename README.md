@@ -18,22 +18,22 @@ colcon build && source install/setup.bash
   - weight_file: model weights, for DR-SPAAM, default "ckpt_jrdb_ann_dr_spaam_e20.pth"
 
 ## Run
-- Laser detector:
 
-`ros2 launch detector_ros dr_spaam_ros.launch.py`
+- Detectors:
 
-- Yolo detector:
+`ros2 launch detector_ros dr_spaam_ros.launch.py` (laser only)
 
-`ros2 launch detector_ros yolo.launch.py`
+`ros2 launch detector_ros yolo.launch.py` (camera only)
 
-- Laser + Yolo detectors:
-
-`ros2 launch detector_ros both.launch.py`
+`ros2 launch detector_ros both.launch.py` (laser + camera)
 
 - Tracker:
 
-`ros2 launch tracker_ros tracker_ros.launch.py`
+`ros2 launch tracker_ros tracker_ros.launch.py` (must be launched *before* Yarp publishes the map)
 
 - Crowd detector:
 
-`ros2 launch crowd_management_ros crowd_management.launch.py`
+`ros2 launch crowd_management_ros detect_following.launch.py` (group detection only)
+
+`ros2 launch crowd_management_ros crowd_management.launch.py` (group detection + turning around)
+
