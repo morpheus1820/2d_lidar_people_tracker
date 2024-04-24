@@ -5,7 +5,11 @@ import rclpy
 import sys
 import torch
 
-from rclpy.node import Node
+from rclpy.lifecycle import Node
+from rclpy.lifecycle import Publisher
+from rclpy.lifecycle import State
+from rclpy.lifecycle import TransitionCallbackReturn
+
 from rclpy.parameter import Parameter
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import Point, Pose, PoseArray
@@ -26,19 +30,51 @@ class YoloDetector(Node):
         # init YOLOv5
         self.model = torch.hub.load('ultralytics/yolov5', 'yolov5m')
         
+    def _init(self):
         # init pubs
-        self.dets_pub = self.create_publisher(
+        self.dets_pub = self.create_lifecycle_publisher(
             PoseArray, "/yolo_detections", 10
-        )	
-        self.rviz_yolo_pub = self.create_publisher(
+        )
+        self.rviz_yolo_pub = self.create_lifecycle_publisher(
             Marker, "/yolo_detection_markers", 10
         )
         
-	    # init subs
+        # init subs
         self.img_sub = message_filters.Subscriber(self, Image, "/cer/realsense_repeater/color_image")
         self.depth_sub = message_filters.Subscriber(self, Image, "/cer/realsense_repeater/depth_image")
         self.tss = message_filters.ApproximateTimeSynchronizer([self.img_sub, self.depth_sub], 1, slop=.1)
         self.tss.registerCallback(self.combined_callback)
+                
+    def on_configure(self, state: State) -> TransitionCallbackReturn:
+        self._init()
+        self.get_logger().info('on_configure() is called.')
+        return TransitionCallbackReturn.SUCCESS
+
+    def on_activate(self, state: State) -> TransitionCallbackReturn:
+        # The different behaviour of publishers will be
+        # defined in _scan_callback
+        return super().on_activate(state)
+
+    def on_deactivate(self, state: State) -> TransitionCallbackReturn:
+        return super().on_deactivate(state)
+
+    def on_cleanup(self, state: State) -> TransitionCallbackReturn:
+        self.destroy_publisher(self.dets_pub)
+        self.destroy_publisher(self.rviz_yolo_pub)
+        self.destroy_subscription(self.img_sub)
+        self.destroy_subscription(self.depth_sub)
+
+        self.get_logger().info('on_cleanup() is called.')
+        return TransitionCallbackReturn.SUCCESS
+
+    def on_shutdown(self, state: State) -> TransitionCallbackReturn:
+        self.destroy_publisher(self.dets_pub)
+        self.destroy_publisher(self.rviz_yolo_pub)
+        self.destroy_subscription(self.img_sub)
+        self.destroy_subscription(self.depth_sub)
+        
+        self.get_logger().info('on_shutdown() is called.')
+        return TransitionCallbackReturn.SUCCESS
     
     def _read_params(self):
         self.declare_parameter("fov", 74)
@@ -48,6 +84,17 @@ class YoloDetector(Node):
         self.img_width= float(self.get_parameter("img_width").value)
 	
     def combined_callback(self, img_msg, depth_msg):
+        if (self.dets_pub is None or not self.dets_pub.is_activated
+            or self.rviz_yolo_pub is None or not self.rviz_yolo_pub.is_activated
+        ):
+            self.get_logger().info('Lifecycle publisher is deactivated. Messages are not published.')
+            return
+        if (
+            self.dets_pub.get_subscription_count() == 0
+            and self.rviz_yolo_pub.get_subscription_count() == 0
+        ):
+            return
+           
         current_frame = self.br.imgmsg_to_cv2(img_msg)
         processed_image = self.model(current_frame)       
 	
@@ -144,10 +191,14 @@ def detections_to_rviz_marker(dets_xy, dets_cls, color = (1.0, 0.0, 0.0, 1.0)):
     	
 def main(args=None):
     rclpy.init(args=args)
+    executor = rclpy.executors.SingleThreadedExecutor()
     node = YoloDetector()
-    rclpy.spin(node)
-    rclpy.shutdown()
-
+    executor.add_node(node)
+    try:
+        executor.spin()
+    except (KeyboardInterrupt, rclpy.executors.ExternalShutdownException):
+        node.destroy_node()
+        
 if __name__ == '__main__':
     try:
         main()
