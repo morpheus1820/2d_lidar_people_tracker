@@ -8,6 +8,7 @@ import sys
 from copy import deepcopy
 from geometry_msgs.msg import PoseArray
 from nav_msgs.msg import OccupancyGrid
+from std_srvs.srv import Empty
 
 from rclpy.node import Node
 
@@ -24,7 +25,8 @@ class OutlierRemoverStatic(Node):
         self.outlier_poses = []
         self.counter = 0
         
-
+        self.srv = self.create_service(Empty, 'record', self.record_callback)
+        
         self.dr_spaam_sub = self.create_subscription(
                     PoseArray, 
                     'dr_spaam_detections', 
@@ -52,6 +54,12 @@ class OutlierRemoverStatic(Node):
         self.back_sub_inliers_pub = self.create_publisher(
             PoseArray, "inliers_sub", 10
         )
+    def record_callback(self, request, response):
+        self.get_logger().info('Incoming request to record background')
+        self.outlier_poses = []
+        self.counter = 0
+	
+        return response
         
     def yolo_callback(self, msg):
         poses = self.remove_outliers(msg)
