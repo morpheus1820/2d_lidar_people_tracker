@@ -44,8 +44,8 @@ class FollowingGroupDetector(Node):
             if x < -0.5 and x > -6 and np.abs(y) < 3:
                 group_poses.append([x,y])
         
-        
-        if len(group_poses) > 0:   
+        # at least two people must be following
+        if len(group_poses) > 1:   
         
             is_followed.data = True
             
@@ -78,9 +78,9 @@ class FollowingGroupDetector(Node):
             marker.header.frame_id = "mobile_base_body_link"
             marker.type = marker.SPHERE
             marker.action = marker.ADD
-            marker.scale.x = self.moving_avg_group[2] * 10
-            marker.scale.y = self.moving_avg_group[2] * 10
-            marker.scale.z = self.moving_avg_group[2] * 10
+            marker.scale.x = self.moving_avg_group[2] * 6
+            marker.scale.y = self.moving_avg_group[2] * 6
+            marker.scale.z = self.moving_avg_group[2] * 6
             
             marker.color.a = 0.3
             marker.color.r = 1.0
