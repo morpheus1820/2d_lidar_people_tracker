@@ -1,12 +1,14 @@
+#import matplotlib.pyplot as plt
 import numpy as np
 import rclpy
 import sys
 
+from geometry_msgs.msg import Pose, PoseArray
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 from rclpy.duration import Duration
-from geometry_msgs.msg import Pose, PoseArray
 from sensor_msgs.msg import Image
+from scipy import signal
 from std_msgs.msg import Bool
 from visualization_msgs.msg import Marker, MarkerArray
 
@@ -14,7 +16,13 @@ from visualization_msgs.msg import Marker, MarkerArray
 class FollowingGroupDetector(Node):
     def __init__(self):
         super().__init__("following_group_detector_node")
-        
+
+        self.moving_avg_group = None # format: centerx, centery, convariance in robot frame 
+        self.count = 0
+        self.is_followed_array = np.zeros(50)
+        self.b, self.a = signal.butter(3, 0.05)
+        self.zi = signal.lfilter_zi(self.b, self.a)
+
         # subscribers
         self.inliers_sub = self.create_subscription(
             PoseArray, "inliers", self.inliers_callback, 10
@@ -26,10 +34,9 @@ class FollowingGroupDetector(Node):
         )
         self.is_followed_pub = self.create_publisher(
             Bool, "is_followed", 10)
-        
-        self.moving_avg_group = None # format: centerx, centery, convariance in robot frame
-         
-        self.count = 0
+
+        self.is_followed_filtered_pub = self.create_publisher(
+            Bool, "is_followed_filtered", 10)
 
     def inliers_callback(self, msg):            
         group_poses = []    
@@ -44,7 +51,7 @@ class FollowingGroupDetector(Node):
             if x < -0.5 and x > -6 and np.abs(y) < 3:
                 group_poses.append([x,y])
         
-        # at least two people must be following
+        
         if len(group_poses) > 1:   
         
             is_followed.data = True
@@ -96,7 +103,30 @@ class FollowingGroupDetector(Node):
             self.marker_pub.publish(marker_msg)
         
         self.is_followed_pub.publish(is_followed)   
+	
+        # filter
+        if self.count % 10 == 0:
+                self.is_followed_array = np.roll(self.is_followed_array, 1)
+                self.is_followed_array[0] = float(is_followed.data)
+                filtered, _ = signal.lfilter(self.b, self.a, self.is_followed_array, zi=self.zi*self.is_followed_array[0])
+                self.count = 0
+
+                is_followed = Bool()
+                is_followed.data = True if np.mean(filtered) > 0.2 else False
+                self.is_followed_filtered_pub.publish(is_followed) 
+                print("mean", np.mean(filtered))                  
+                        
+                        
+#                print(f"{self.is_followed_array=}")
+#                print(f"{filtered=}")
+                
+#                plt.close('all')
+#                plt.plot(self.is_followed_array)
+#                plt.plot(filtered)
+#                plt.show() 
+        self.count += 1
         
+
 def main(args=None):
     rclpy.init(args=args)
     node = FollowingGroupDetector()
