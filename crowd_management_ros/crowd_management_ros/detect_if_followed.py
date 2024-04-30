@@ -1,4 +1,3 @@
-#import matplotlib.pyplot as plt
 import numpy as np
 import rclpy
 import sys
@@ -47,7 +46,7 @@ class FollowingGroupDetector(Node):
 
     def inliers_callback(self, msg):
         # if robot is turning
-        if self.rot_vel > 0.1:
+        if self.rot_vel > 0.2:
             is_followed = Bool()
             is_followed.data = True
             return
@@ -129,14 +128,6 @@ class FollowingGroupDetector(Node):
                 self.is_followed_filtered_pub.publish(is_followed)
                 print("mean", np.mean(filtered))
 
-
-#                print(f"{self.is_followed_array=}")
-#                print(f"{filtered=}")
-
-#                plt.close('all')
-#                plt.plot(self.is_followed_array)
-#                plt.plot(filtered)
-#                plt.show()
         self.count += 1
 
 
