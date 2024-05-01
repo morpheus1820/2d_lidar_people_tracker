@@ -17,8 +17,11 @@ class FollowingGroupDetector(Node):
     def __init__(self):
         super().__init__("following_group_detector_node")
 
+        self.inliers = None
         self.moving_avg_group = None # format: centerx, centery, convariance in robot frame
         self.count = 0
+        
+        # filtering
         self.is_followed_array = np.zeros(50)
         self.b, self.a = signal.butter(3, 0.05)
         self.zi = signal.lfilter_zi(self.b, self.a)
@@ -31,20 +34,31 @@ class FollowingGroupDetector(Node):
         self.odom_sub = self.create_subscription(
             Odometry, "odometry", self.odom_callback, 10
         )
+
         #publishers
         self.marker_pub = self.create_publisher(
             MarkerArray, "detected_group_marker", 10
         )
         self.is_followed_pub = self.create_publisher(
-            Bool, "is_followed", 10)
+            Bool, "is_followed", 10
+        )
+        self.is_followed_unfiltered_pub = self.create_publisher(
+            Bool, "is_followed_unfiltered", 10
+        )
 
-        self.is_followed_filtered_pub = self.create_publisher(
-            Bool, "is_followed_filtered", 10)
+        # timer
+        self.check_following_timer = self.create_timer(.1, self.check_following_callback)
 
     def odom_callback(self, msg):
-        self.rot_vel = msg.pose.twist.twist.angular.z
+        self.rot_vel = msg.twist.twist.angular.z
 
     def inliers_callback(self, msg):
+        self.inliers = msg
+        
+    def check_following_callback(self):
+        if self.inliers is None:
+            return
+            
         # if robot is turning
         if self.rot_vel > 0.2:
             is_followed = Bool()
@@ -54,23 +68,22 @@ class FollowingGroupDetector(Node):
         group_poses = []
         group_center = None
         group_covariance = None
-        is_followed = Bool()
-        is_followed.data = False
+        is_followed_unfiltered = Bool()
+        is_followed_unfiltered.data = False
 
-        for pose in msg.poses:
+        for pose in self.inliers.poses:
             x = pose.position.x
             y = pose.position.y
             if x < -0.5 and x > -6 and np.abs(y) < 3:
                 group_poses.append([x,y])
 
-
         if len(group_poses) > 1:
 
-            is_followed.data = True
+            is_followed_unfiltered.data = True
 
             group_center = np.mean(group_poses,axis=0)
             group_covariance = np.max(np.std(group_poses,axis=0))
-            #print(group_covariance)
+
             if group_covariance > 0.6:
                 group_covariance = 0.6
 
@@ -93,7 +106,7 @@ class FollowingGroupDetector(Node):
             marker = Marker()
             marker.id = 1
             marker.lifetime = Duration(seconds=1.0).to_msg()
-            marker.header.stamp = msg.header.stamp
+            marker.header.stamp = self.inliers.header.stamp
             marker.header.frame_id = "mobile_base_body_link"
             marker.type = marker.SPHERE
             marker.action = marker.ADD
@@ -114,22 +127,23 @@ class FollowingGroupDetector(Node):
 
             self.marker_pub.publish(marker_msg)
 
-        self.is_followed_pub.publish(is_followed)
+        self.is_followed_unfiltered_pub.publish(is_followed_unfiltered)
 
         # filter
         if self.count % 10 == 0:
                 self.is_followed_array = np.roll(self.is_followed_array, 1)
-                self.is_followed_array[0] = float(is_followed.data)
+                self.is_followed_array[0] = float(is_followed_unfiltered.data)
                 filtered, _ = signal.lfilter(self.b, self.a, self.is_followed_array, zi=self.zi*self.is_followed_array[0])
+                filtered, _ = signal.lfilter(self.b, self.a, filtered, zi=self.zi*self.is_followed_array[0])
+                
                 self.count = 0
 
                 is_followed = Bool()
-                is_followed.data = True if np.mean(filtered) > 0.2 else False
-                self.is_followed_filtered_pub.publish(is_followed)
+                is_followed.data = True if np.mean(filtered) > 0.1 else False
+                self.is_followed_pub.publish(is_followed)
                 print("mean", np.mean(filtered))
 
         self.count += 1
-
 
 def main(args=None):
     rclpy.init(args=args)
