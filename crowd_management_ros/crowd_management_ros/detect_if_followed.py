@@ -9,7 +9,7 @@ from rclpy.parameter import Parameter
 from rclpy.duration import Duration
 from sensor_msgs.msg import Image
 from scipy import signal
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, String
 from visualization_msgs.msg import Marker, MarkerArray
 
 
@@ -19,6 +19,7 @@ class FollowingGroupDetector(Node):
 
         self.inliers = None
         self.odometry = None
+        self.turning_step_count = 0
         self.moving_avg_group = None # format: centerx, centery, convariance in robot frame
         self.count = 0
         
@@ -49,6 +50,9 @@ class FollowingGroupDetector(Node):
         self.is_followed_timeout_pub = self.create_publisher(
             Bool, "is_followed_timeout", 10
         )
+        self.is_followed_string_pub = self.create_publisher(
+            String, "is_followed_string", 10
+        )
         
         # timer
         self.check_following_timer = self.create_timer(1.0, self.check_following_callback)
@@ -65,16 +69,25 @@ class FollowingGroupDetector(Node):
         group_covariance = None
                 
         # if robot is turning
-        if self.odometry is not None and self.odometry.twist.twist.angular.z > 0.2:
+        if self.odometry is not None and abs(self.odometry.twist.twist.angular.z) > 0.2:
+            self.turning_step_count += 1
+        else:
+            self.turning_step_count = 0
+        if self.turning_step_count > 2:
             is_followed_unfiltered = Bool()
             is_followed_unfiltered.data = True
             self.is_followed_unfiltered_pub.publish(is_followed_unfiltered)
+            
+            is_followed_string = String()
+            is_followed_string.data = "unknown"
+            self.is_followed_string_pub.publish(is_followed_string)
+         
             return
 
         # init followed state = False
         is_followed_unfiltered = Bool()
         is_followed_unfiltered.data = False
-
+            
         # if any inliers were received, detect group
         if self.inliers is None:
             time_diff = 1e6
@@ -163,7 +176,11 @@ class FollowingGroupDetector(Node):
         is_followed_timeout = Bool()
         is_followed_timeout.data = True if self.is_followed_array[:10].sum() > 1e-5 else False
         self.is_followed_timeout_pub.publish(is_followed_timeout)
-
+        
+        is_followed_string = String()
+        is_followed_string.data = "true" if self.is_followed_array[:10].sum() > 1e-5 else "false"
+        self.is_followed_string_pub.publish(is_followed_string)
+        
 def main(args=None):
     rclpy.init(args=args)
     node = FollowingGroupDetector()
