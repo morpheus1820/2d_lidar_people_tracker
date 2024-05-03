@@ -13,5 +13,4 @@ def generate_launch_description():
     )
 
     ld.add_action(detect_following)
-    ld.add_action(act_if_not_followed)
     return ld
