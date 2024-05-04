@@ -7,15 +7,19 @@ mkdir -p $HOME/ros2_ws/src && cd $HOME/ros2_ws/src
 git clone https://github.com/morpheus1820/2d_lidar_people_tracker
 pip3 install torch torchvision
 pip3 install -r 2d_lidar_people_tracker/requirements.txt
-cd $HOME/ros2_ws` 
+cd $HOME/ros2_ws 
 colcon build && source install/setup.bash
 ```
 
 ## Configure
-`detector_ros/config/dr_spaam_ros.yaml`
+Laser: `detector_ros/config/dr_spaam_ros.yaml`
   - use_gpu: enable CUDA, default True
   - detector_model: DROW3 or DR-SPAAM, default DR-SPAAM
   - weight_file: model weights, for DR-SPAAM, default "ckpt_jrdb_ann_dr_spaam_e20.pth"
+
+Camera:  `detector_ros/config/yolo.yaml`
+  - fov: horizontal field of view, default 74
+  - img_width: default 640
 
 ## Run
 
