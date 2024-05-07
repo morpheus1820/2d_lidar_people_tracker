@@ -174,11 +174,11 @@ class FollowingGroupDetector(Node):
         
         # publish timeout state
         is_followed_timeout = Bool()
-        is_followed_timeout.data = True if self.is_followed_array[:10].sum() > 1e-5 else False
+        is_followed_timeout.data = True if self.is_followed_array[:20].sum() > 1e-5 else False
         self.is_followed_timeout_pub.publish(is_followed_timeout)
         
         is_followed_string = String()
-        is_followed_string.data = "true" if self.is_followed_array[:10].sum() > 1e-5 else "false"
+        is_followed_string.data = "true" if self.is_followed_array[:20].sum() > 1e-5 else "false"
         self.is_followed_string_pub.publish(is_followed_string)
         
 def main(args=None):
