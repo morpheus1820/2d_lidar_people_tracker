@@ -27,6 +27,10 @@ Camera:  `detector_ros/config/yolo.yaml`
 
 `ros2 launch detector_ros dr_spaam_ros.launch.py` (laser only)
 
+`ros2 launch detector_ros dr_spaam_ros_local.launch.py` (laser only (CPU) to be launched on r1-base)
+
+`ros2 launch detector_ros dr_spaam_ros_remote.launch.py` (laser only (GPU) to be launched on remote laptop)
+
 `ros2 launch detector_ros yolo.launch.py` (camera only)
 
 `ros2 launch detector_ros both.launch.py` (laser + camera)
