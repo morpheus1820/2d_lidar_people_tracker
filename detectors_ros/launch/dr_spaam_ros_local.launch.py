@@ -55,5 +55,5 @@ def generate_launch_description():
     
     ld.add_action(node)
     ld.add_action(emit_event_to_request_configure_transition)
-    ld.add_action(emit_event_to_request_active_transition)
+    #ld.add_action(emit_event_to_request_active_transition)
     return ld
