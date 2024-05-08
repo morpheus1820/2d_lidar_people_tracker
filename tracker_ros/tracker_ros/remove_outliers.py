@@ -155,8 +155,9 @@ class OutlierRemover(Node):
         # from top-left
         map_offset_x = int(-self.map_origin[0] / 0.05)
         map_offset_y = self.map_img.shape[0] - int(-self.map_origin[1] / 0.05)
-        keepout_offset_x = int(-self.keepout_origin[0] / 0.05)
-        keepout_offset_y = self.keepout_img.shape[0] - int(-self.keepout_origin[1] / 0.05)
+        if self.keepout_img is not None:
+            keepout_offset_x = int(-self.keepout_origin[0] / 0.05)
+            keepout_offset_y = self.keepout_img.shape[0] - int(-self.keepout_origin[1] / 0.05)
 
         cv2.circle(img, (map_offset_x, map_offset_y), 5, (0,0,255), -1)
 
@@ -172,7 +173,8 @@ class OutlierRemover(Node):
             det_in_mapf_pixels[1] = -det_in_mapf_pixels[1]
 
             cell_to_check = det_in_mapf_pixels + np.array([map_offset_x, map_offset_y])
-            keepout_cell_to_check = det_in_mapf_pixels + np.array([keepout_offset_x, keepout_offset_y])
+            if self.keepout_img is not None:
+                keepout_cell_to_check = det_in_mapf_pixels + np.array([keepout_offset_x, keepout_offset_y])
 
             try:
                 cv2.circle(img, tuple(cell_to_check), 10, (0,0,20), 3)
