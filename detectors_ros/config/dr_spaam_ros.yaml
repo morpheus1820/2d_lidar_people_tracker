@@ -6,3 +6,21 @@ dr_spaam_ros:
     stride: 1  # use this to skip laser points
     panoramic_scan: True  # Set to true if the scan covers 360 degree
     use_gpu: True
+
+dr_spaam_ros_local:
+  ros__parameters:
+    weight_file: "checkpoints/ckpt_jrdb_ann_dr_spaam_e20.pth"
+    detector_model: "DR-SPAAM"  # DROW3 or DR-SPAAM
+    conf_thresh: 0.7
+    stride: 2  # use this to skip laser points
+    panoramic_scan: True  # Set to true if the scan covers 360 degree
+    use_gpu: False
+
+dr_spaam_ros_remote:
+  ros__parameters:
+    weight_file: "checkpoints/ckpt_jrdb_ann_dr_spaam_e20.pth"
+    detector_model: "DR-SPAAM"  # DROW3 or DR-SPAAM
+    conf_thresh: 0.7
+    stride: 1  # use this to skip laser points
+    panoramic_scan: True  # Set to true if the scan covers 360 degree
+    use_gpu: True
