@@ -100,7 +100,7 @@ class FollowingGroupDetector(Node):
             for pose in self.inliers.poses:
                 x = pose.position.x
                 y = pose.position.y
-                if x < -0.5 and x > -6 and np.abs(y) < 3:
+                if np.abs(x)  > 0.5 and np.abs(x) < 6 and np.abs(y) < 3:
                     group_poses.append([x,y])
     
             # if group detected
