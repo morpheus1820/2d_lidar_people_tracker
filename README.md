@@ -23,6 +23,10 @@ Camera:  `detector_ros/config/yolo.yaml`
 
 ## Run
 
+`ros2 launch crowd_management_ros pipeline.launch.py` (start full group detection)
+
+OR
+
 - Detectors:
 
 `ros2 launch detector_ros dr_spaam_ros.launch.py` (laser only)
