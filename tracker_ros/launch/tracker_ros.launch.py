@@ -5,22 +5,18 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    ld = LaunchDescription()
-        
-    tracker=Node(
-        package = 'tracker_ros',
-        executable = 'jpda_tracker'
-    )
+    ld = LaunchDescription() 
+
     outlier_removal=Node(
         package = 'tracker_ros',
         executable = 'outlier_remover'
     )
-    tracker_pose_pub=Node(
+        
+    tracker=Node(
         package = 'tracker_ros',
-        executable = 'jpda_tracker_pose_pub'
+        executable = 'tracker'
     )
     
-    ld.add_action(tracker)
     ld.add_action(outlier_removal)
-    ld.add_action(tracker_pose_pub)
+    ld.add_action(tracker)
     return ld

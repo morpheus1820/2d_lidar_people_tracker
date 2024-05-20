@@ -41,9 +41,9 @@ from stonesoup.types.state import GaussianState
 from stonesoup.initiator.simple import MultiMeasurementInitiator
 
 
-class JPDATracker(Node):
+class Tracker(Node):
     def __init__(self):
-        super().__init__("jpda_tracker_node")
+        super().__init__("tracker_node")
 	
         self.palette = sns.color_palette() * 2
         for i in range(len(self.palette)):
@@ -58,25 +58,24 @@ class JPDATracker(Node):
         self.dr_spaam_sub = self.create_subscription(
             PoseArray, "inliers", self.dr_spaam_callback, 10
         )
+	
         self.yolo_sub = self.create_subscription(
-            PoseArray, "notyousedlo_detections", self.yolo_callback, 10
+            PoseArray, "yolo_detections", self.yolo_callback, 10
         )        
-
-        #self.laser_sub = self.create_subscription(
-        #    PoseArray, "laser_local", self.laser_callback, 10
-        #)      
         
         self.tracks_img_pub = self.create_publisher(
-            Image, "tracks_new", 10
-	    )
+            Image, "tracks_image", 10
+	)
+	
         self.marker_pub = self.create_publisher(
-            MarkerArray, "tracks_marker_array_new", 10
+            MarkerArray, "tracks_marker_array", 10
         )
+	
         self.poses_pub = self.create_publisher(
             PoseArray, "tracks_pose_array", 10
         )
     
-        # init JPDA
+        # init tracker
         self.all_measurements = []
         self.tracks = set()
         
@@ -124,7 +123,7 @@ class JPDATracker(Node):
                                               
         self.all_measurements.append(measurement_set)
         
-        self.update_tracks()
+        self.update_tracks(msg)
         self.all_measurements = []
 
     def yolo_callback(self, msg):
@@ -145,15 +144,11 @@ class JPDATracker(Node):
                                               measurement_model=self.measurement_model))
                                               
         self.all_measurements.append(measurement_set)
-        self.update_tracks()
+        self.update_tracks(msg)
         self.all_measurements = []
-        
 
-    def laser_callback(self, msg):
-        self.count += 1
-        self.visualize_tracks()
         
-    def update_tracks(self):
+    def update_tracks(self, msg):
         for n, measurements in enumerate(self.all_measurements):
             # Calculate all hypothesis pairs and associate the elements in the best subset to the tracks.
             hypotheses = self.data_associator.associate(self.tracks,
@@ -177,7 +172,7 @@ class JPDATracker(Node):
             #print(self.tracks)
             self.count += 1
             self.visualize_tracks()
-            self.publish_tracks_as_poses()
+            self.publish_tracks_as_poses(msg)
 
 
     def getTR(self, local_frame):
@@ -281,7 +276,7 @@ class JPDATracker(Node):
             id += 1
         self.marker_pub.publish(marker_msg)
         
-    def publish_tracks_as_poses(self):
+    def publish_tracks_as_poses(self, msg):
         pose_array = PoseArray()
         
         T = None
@@ -313,7 +308,7 @@ class JPDATracker(Node):
             y = track[-1].state_vector[2]
               
             global_xy = np.array([x, y, 0, 1])
-            local_xy = global_xy @ TR
+            local_xy = np.linalg.inv(TR) @ global_xy
             
             local_pose = Pose()
             local_pose.position.x = local_xy[0]
@@ -323,13 +318,14 @@ class JPDATracker(Node):
             pose_array.poses.append(local_pose)
            
         # convert to ros msg and publish
+        pose_array.header = msg.header
         pose_array.header.frame_id = "mobile_base_body_link"
         self.poses_pub.publish(pose_array)
 
         
 def main(args=None):
     rclpy.init(args=args)
-    node = JPDATracker()
+    node = Tracker()
     rclpy.spin(node)
     rclpy.shutdown()
 
