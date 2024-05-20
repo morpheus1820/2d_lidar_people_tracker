@@ -23,9 +23,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'jpda_tracker = tracker_ros.jpda_tracker:main',
+            'tracker = tracker_ros.tracker:main',
             'outlier_remover = tracker_ros.remove_outliers:main',
-            'jpda_tracker_pose_pub = tracker_ros.jpda_tracker_publish_poses:main'
         ],
     },
 )
