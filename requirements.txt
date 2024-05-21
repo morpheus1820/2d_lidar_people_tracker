@@ -5,4 +5,5 @@ requests
 datetime
 stonesoup
 seaborn
+scikit-learn
 numpy-quaternion
