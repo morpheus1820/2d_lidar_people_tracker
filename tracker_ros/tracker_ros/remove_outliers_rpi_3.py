@@ -22,7 +22,7 @@ class OutlierRemoverStatic(Node):
         self.counter = 0
         self.position_threshold = 0.3
         self.out_file = open("occupancy_over_time-" + datetime.datetime.now().strftime("%m-%d-%Y_%H:%M:%S") + ".csv", "w")
-        self.write_to_file_period = 30
+        self.write_to_file_period = 0 #30 s
         self.write_to_file_prev_sec = 0
                 
         self.srv = self.create_service(Empty, 'record_background', self.record_callback)
@@ -79,12 +79,17 @@ class OutlierRemoverStatic(Node):
             self.back_sub_inliers_pub.publish(poses)
             
             # write to file
-            print("Writing to file?")
             ts = Time.from_msg(msg.header.stamp).seconds_nanoseconds()
             if ts[0] - self.write_to_file_prev_sec >= self.write_to_file_period:
-                print("yes")
-                date_ts = datetime.datetime.utcfromtimestamp(ts[0])            
-                self.out_file.write(date_ts.strftime("%m/%d/%Y, %H:%M:%S") + ", " + str(len(poses.poses)) + "\n")
+                date_ts = datetime.datetime.utcfromtimestamp(ts[0])
+                poses_str = []
+                for pose in poses.poses:
+                    poses_str.append(str(pose.position.x))
+                    poses_str.append(str(pose.position.y))
+                
+                line = date_ts.strftime("%m/%d/%Y, %H:%M:%S") + ", " + str(len(poses.poses)) + ", " + ", ".join(poses_str) + "\n"
+                              
+                self.out_file.write(line)
                 self.write_to_file_prev_sec = ts[0]
                 
     def remove_outliers(self, msg):
