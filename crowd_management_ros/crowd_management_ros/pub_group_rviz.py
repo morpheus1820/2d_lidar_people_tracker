@@ -5,7 +5,7 @@ import numpy as np
 from rclpy.node import Node
 from geometry_msgs.msg import Pose, PoseArray, PoseWithCovarianceStamped, Point, Point32, Polygon, PolygonStamped
 from std_msgs.msg import Bool, ColorRGBA
-from visualization_msgs.msg import Marker
+from visualization_msgs.msg import Marker, MarkerArray
 from scipy.spatial import ConvexHull
 
 
@@ -26,6 +26,9 @@ class GroupPublisher(Node):
         self.group_pub = self.create_publisher(
             Marker, "group_marker", 10
         )
+        self.numbers_pub = self.create_publisher(
+            MarkerArray, "group_size_marker", 10
+        )
         self.poly_pub = self.create_publisher(
             PolygonStamped, "group_polygon", 10
         )        
@@ -34,6 +37,9 @@ class GroupPublisher(Node):
 
         self.points = []
         self.colors = []
+        
+        self.text_numbers = []
+        self.text_positions = []        
          
     def amcl_callback(self, msg):
         self.last_position = msg.pose.pose.position
@@ -72,7 +78,35 @@ class GroupPublisher(Node):
         marker.colors = self.colors
         self.group_pub.publish(marker)
 
-        
+        # publish size of group
+        count = 0
+        for pose in self.last_tracks.poses:
+            if np.abs(pose.position.x) > 0.5 and np.abs(pose.position.x) < 6 and np.abs(pose.position.y) < 3:
+                count += 1
+        self.text_numbers.append(str(count))
+        self.text_positions.append(p)
+        marker_array = MarkerArray()
+        for i, (text, pos) in enumerate(zip(self.text_numbers, self.text_positions))	:
+            marker = Marker()	
+            marker.id = i
+            marker.header.frame_id = "map"
+            marker.type = marker.TEXT_VIEW_FACING
+            marker.action = marker.ADD
+            marker.scale.x = marker.scale.y = marker.scale.z = 0.4
+            marker.text = text
+            marker.color.r = 0.0
+            marker.color.g = 0.0
+            marker.color.b = 1.0
+            marker.color.a = 1.0
+            marker.pose.position.x = pos.x
+            marker.pose.position.y = pos.y
+            marker.pose.position.z = pos.z
+            	
+            #print(pos.x, pos.y, pos.z)
+            marker_array.markers.append(marker)
+        self.numbers_pub.publish(marker_array)
+            
+        # publish polygon       
         if self.last_tracks is not None and len(self.last_tracks.poses) > 2:
             poly = Polygon()
             polys = PolygonStamped()
@@ -94,6 +128,7 @@ class GroupPublisher(Node):
                 polys.polygon = poly
                 polys.header.frame_id = "mobile_base_body_link"
                 self.poly_pub.publish(polys) 
+                
 
 def main(args=None):
     rclpy.init(args=args)
