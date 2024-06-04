@@ -1,10 +1,12 @@
 import rclpy
 import sys
+import numpy as np
 
 from rclpy.node import Node
-from geometry_msgs.msg import Pose, PoseArray, PoseWithCovarianceStamped, Point
+from geometry_msgs.msg import Pose, PoseArray, PoseWithCovarianceStamped, Point, Point32, Polygon, PolygonStamped
 from std_msgs.msg import Bool, ColorRGBA
 from visualization_msgs.msg import Marker
+from scipy.spatial import ConvexHull
 
 
 class GroupPublisher(Node):
@@ -13,22 +15,32 @@ class GroupPublisher(Node):
         
         # subscribers
         self.is_followed_sub = self.create_subscription(
-            Bool, "is_followed", self.is_followed_callback, 10
+            Bool, "is_followed_timeout", self.is_followed_callback, 10
         )
         self.amcl_sub = self.create_subscription(
             PoseWithCovarianceStamped, "amcl_pose", self.amcl_callback, 10
         )
+        self.inliers_sub = self.create_subscription(
+            PoseArray, "tracks_pose_array", self.tracks_callback, 10
+        )
         self.group_pub = self.create_publisher(
             Marker, "group_marker", 10
         )
-        
+        self.poly_pub = self.create_publisher(
+            PolygonStamped, "group_polygon", 10
+        )        
         self.last_position = None
+        self.last_tracks = None
+
         self.points = []
         self.colors = []
          
     def amcl_callback(self, msg):
         self.last_position = msg.pose.pose.position
 
+    def tracks_callback(self, msg):
+        self.last_tracks = msg
+        
     def is_followed_callback(self, msg):
         if self.last_position is None:
             return
@@ -59,6 +71,29 @@ class GroupPublisher(Node):
         marker.points = self.points
         marker.colors = self.colors
         self.group_pub.publish(marker)
+
+        
+        if self.last_tracks is not None and len(self.last_tracks.poses) > 2:
+            poly = Polygon()
+            polys = PolygonStamped()
+            points = []
+            for pose in self.last_tracks.poses:
+                if np.abs(pose.position.x) > 0.5 and np.abs(pose.position.x) < 6 and np.abs(pose.position.y) < 3: 
+                    points.append([pose.position.x, pose.position.y])
+            
+            if len(points) > 2:
+                hull = ConvexHull(np.array(points))
+                idxs = hull.vertices
+                for idx in idxs:
+            	    p = Point32()
+            	    p.x = points[idx][0]
+            	    p.y = points[idx][1]
+            	    p.z = 0.0
+            	    poly.points.append(p)
+            	
+                polys.polygon = poly
+                polys.header.frame_id = "mobile_base_body_link"
+                self.poly_pub.publish(polys) 
 
 def main(args=None):
     rclpy.init(args=args)
