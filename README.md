@@ -52,3 +52,25 @@ OR
 - Visualization:
 
 `rviz2 -d detector_ros/config/r1-viz.rviz`
+
+## Acknowledgements
+This repository is based on https://github.com/VisualComputingInstitute/2D_lidar_person_detection
+and the following publications:
+```BibTeX
+@article{Jia2021Person2DRange,
+  title        = {{Self-Supervised Person Detection in 2D Range Data using a
+                   Calibrated Camera}},
+  author       = {Dan Jia and Mats Steinweg and Alexander Hermans and Bastian Leibe},
+  booktitle    = {International Conference on Robotics and Automation (ICRA)},
+  year         = {2021}
+}
+
+@inproceedings{Jia2020DRSPAAM,
+  title        = {{DR-SPAAM: A Spatial-Attention and Auto-regressive
+                   Model for Person Detection in 2D Range Data}},
+  author       = {Dan Jia and Alexander Hermans and Bastian Leibe},
+  booktitle    = {International Conference on Intelligent Robots and Systems (IROS)},
+  year         = {2020}
+}
+```
+We thank the authors for their contributions. 
