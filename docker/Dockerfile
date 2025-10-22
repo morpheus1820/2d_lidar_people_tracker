@@ -1,7 +1,6 @@
 ARG base_img
-ARG token
 FROM $base_img
-LABEL maintainer="Misael González Almeida"
+LABEL maintainer="Stefano Bernagozzi"
 
 ARG ros_distro
 
@@ -14,8 +13,8 @@ RUN apt-get update && apt-get install -y apt-utils software-properties-common su
     tmux nano geany vim wget curl build-essential git gitk cmake cmake-curses-gui autoconf xserver-xorg-video-dummy xserver-xorg-legacy \
     net-tools terminator libjpeg-dev ffmpeg apt-transport-https ca-certificates gnupg libace-dev ycm-cmake-modules locales \
     python3-setuptools python3-pip iproute2 python3-tornado swig lsof iftop iputils-ping gdb bash-completion btop mlocate && rm -rf /var/lib/apt/lists/*
-    
-RUN git config --global url.”https://${token}:@github.com/".insteadOf “https://github.com/"
+
+# RUN git config --global url."https://github.com/".insteadOf "https://github.com/"
 
 RUN pip3 install numpy bpytop
 
