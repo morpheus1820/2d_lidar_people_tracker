@@ -48,7 +48,7 @@ RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /home/${USER}/.bashrc
 # Install pip and system dependencies
 RUN sudo apt update && sudo apt install -y python3-pip python3.12-venv
 RUN cd && python3 -m venv venv
-RUN cd && . venv/bin/activate && pip3 install torch
+RUN cd && . ./venv/bin/activate && pip3 install torch
 RUN pip3 install numpy==1.26.4
 
 RUN cd && mkdir -p $HOME/ros2_ws/src 
