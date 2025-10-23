@@ -6,7 +6,7 @@ ENV USER=user1
 ARG PASSWORD=user1
 USER root
 RUN apt update && apt install -y software-properties-common && add-apt-repository universe
-RUN locale-gen en_US en_US.UTF-8
+RUN apt update && apt install -y locales && locale-gen en_US en_US.UTF-8
 RUN ln -fs /usr/share/zoneinfo/Europe/Rome /etc/localtime
 RUN apt update && DEBIAN_FRONTEND=noninteractive apt install --no-install-recommends -qq -y ffmpeg libsm6 libxext6 locales software-properties-common curl sudo git cmake iproute2 unzip bash-completion micro && rm -rf /var/lib/apt/lists/*
 RUN update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
