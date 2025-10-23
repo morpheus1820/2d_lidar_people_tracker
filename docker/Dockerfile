@@ -30,7 +30,7 @@ RUN sudo apt update && DEBIAN_FRONTEND=noninteractive sudo apt install ros-$ROS_
 ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /home/${USER}/.bashrc
 
-RUN apt clean 
+RUN sudo apt clean 
 
 # Install pip and system dependencies
 RUN cd && mkdir -p $HOME/ros2_ws/src && cd $HOME/ros2_ws/src && git clone https://github.com/hsp-iit/2d_lidar_people_tracker
