@@ -5,7 +5,7 @@ ARG LAUNCHPAD_BUILD_ARCH
 ENV USER=user1
 ARG PASSWORD=user1
 USER root
-RUN apt update &&  add-apt-repository universe
+RUN apt update && apt install -y software-properties-common && add-apt-repository universe
 RUN locale-gen en_US en_US.UTF-8
 RUN ln -fs /usr/share/zoneinfo/Europe/Rome /etc/localtime
 RUN apt update && DEBIAN_FRONTEND=noninteractive apt install --no-install-recommends -qq -y ffmpeg libsm6 libxext6 locales software-properties-common curl sudo git cmake iproute2 unzip bash-completion micro && rm -rf /var/lib/apt/lists/*
