@@ -11,8 +11,6 @@ RUN ln -fs /usr/share/zoneinfo/Europe/Rome /etc/localtime
 RUN apt update && DEBIAN_FRONTEND=noninteractive apt install --no-install-recommends -qq -y ffmpeg libsm6 libxext6 locales software-properties-common curl sudo git cmake iproute2 unzip bash-completion micro && rm -rf /var/lib/apt/lists/*
 RUN update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
 
-
-    
 RUN addgroup ${USER} \
     && useradd -ms /bin/bash ${USER} -g ${USER} \
     && echo "${USER}:${PASSWORD}" | chpasswd \
@@ -22,34 +20,24 @@ RUN addgroup ${USER} \
 USER ${USER}
 WORKDIR /home/${USER}
 
-# # Installing python packages
-# Can't use env.yml because cuda install asks to accept agreement
-
 # ROS2 Install
 ENV ROS_DISTRO=jazzy
-
-    
 RUN sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg 
 RUN echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
-
 RUN sudo apt update && DEBIAN_FRONTEND=noninteractive sudo apt install ros-$ROS_DISTRO-ros-base \
     ros-$ROS_DISTRO-sensor-msgs ros-$ROS_DISTRO-geometry-msgs \
     ros-$ROS_DISTRO-cv-bridge ros-$ROS_DISTRO-nav2-common ros-dev-tools ros-$ROS_DISTRO-rmw-cyclonedds-cpp python3-pip python3.12-venv -y
-
 ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-
 RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /home/${USER}/.bashrc
 
+RUN apt clean 
+
 # Install pip and system dependencies
-RUN cd && mkdir -p $HOME/ros2_ws/src 
-
 RUN cd && mkdir -p $HOME/ros2_ws/src && cd $HOME/ros2_ws/src && git clone https://github.com/hsp-iit/2d_lidar_people_tracker
-
 RUN sudo apt update && cd && python3 -m venv venv && . venv/bin/activate && pip3 install torch && pip3 install numpy==1.26.4  && cd $HOME/ros2_ws/src/2d_lidar_people_tracker/people_detector/scripts && pip3 install -r requirements.txt
+RUN pip3 cache clean
 
-
-# # Git Setup
-# Installing repository and pip dependencies
+# Installing repository
 RUN . venv/bin/activate && cd $HOME/ros2_ws && colcon build && source install/setup.bash
 
 # # Update repo
@@ -61,5 +49,4 @@ RUN echo "source /home/user1/ros2_ws/install/setup.bash" >> /home/${USER}/.bashr
 RUN echo "export ROS_DOMAIN_ID=0" >> /home/${USER}/.bashrc
 
 # Cleanup
-
 CMD ["bash", "-c", ". generate_cyclone_config.sh"]
