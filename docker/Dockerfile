@@ -34,8 +34,8 @@ RUN sudo apt clean
 
 # Install pip and system dependencies
 RUN cd && mkdir -p $HOME/ros2_ws/src && cd $HOME/ros2_ws/src && git clone https://github.com/hsp-iit/2d_lidar_people_tracker
-RUN sudo apt update && cd && python3 -m venv venv && . venv/bin/activate && pip3 install torch && pip3 install numpy==1.26.4  && cd $HOME/ros2_ws/src/2d_lidar_people_tracker/people_detector/scripts && pip3 install -r requirements.txt
-RUN pip3 cache clean
+RUN cd && python3 -m venv venv && . venv/bin/activate && pip3 --no-cache-dir install torch && pip3 install --no-cache-dir numpy==1.26.4  && cd $HOME/ros2_ws/src/2d_lidar_people_tracker/people_detector/scripts && pip3 install --no-cache-dir -r requirements.txt
+# RUN pip3 cache clean
 
 # Installing repository
 RUN . venv/bin/activate && cd $HOME/ros2_ws && colcon build && source install/setup.bash
