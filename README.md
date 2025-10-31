@@ -1,5 +1,5 @@
 # 2d_lidar_people_tracker
-![detectors_ros_image](https://github.com/morpheus1820/2d_lidar_people_tracker/assets/1096775/79d191a8-ddf1-4240-8a58-34563a4129eb)
+![detectors_ros_image](assets/header.jpg)
 
 ## Install
 ```
